@@ -36,9 +36,13 @@ on:
 permissions:
   contents: read
 
+# Actions are pinned by commit SHA and the Mull package by SHA-256, so that the
+# evidence of a campaign is produced by a fixed tool chain.
 env:
   MULL_VERSION: "0.34.2"
   LLVM_MAJOR: "19"
+  MULL_DEB: "Mull-19-0.34.2-LLVM-19.1.1-ubuntu-amd64-24.04.deb"
+  MULL_DEB_SHA256: "755955a2253290ec2d5d23376c0bffaa42152b806533df1ac581081ae27a0b2b"
 
 jobs:
   fault-injection:
@@ -47,20 +51,22 @@ jobs:
     timeout-minutes: 360
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Install Clang and Mull
         run: |
           sudo apt-get update
           sudo apt-get install -y "clang-${LLVM_MAJOR}"
+          # The Mull package is built against one LLVM release; refuse another clang.
           LLVM_FULL="$(dpkg-query -W -f='${Version}' "clang-${LLVM_MAJOR}" | sed -E 's/^1:([0-9.]+).*/\1/')"
-          DEB="Mull-${LLVM_MAJOR}-${MULL_VERSION}-LLVM-${LLVM_FULL}-ubuntu-amd64-24.04.deb"
-          curl -fsSL -o mull.deb "https://github.com/mull-project/mull/releases/download/${MULL_VERSION}/${DEB}"
+          [[ "${MULL_DEB}" == *"-LLVM-${LLVM_FULL}-"* ]] || { echo "clang ${LLVM_FULL} does not match ${MULL_DEB}" >&2; exit 1; }
+          curl -fsSL -o mull.deb "https://github.com/mull-project/mull/releases/download/${MULL_VERSION}/${MULL_DEB}"
+          echo "${MULL_DEB_SHA256}  mull.deb" | sha256sum --check --strict
           sudo apt-get install -y ./mull.deb
           "mull-runner-${LLVM_MAJOR}" --version
 
       - name: Setup Bazel
-        uses: bazel-contrib/setup-bazel@0.15.0
+        uses: bazel-contrib/setup-bazel@4fd964a13a440a8aeb0be47350db2fc640f19ca8 # 0.15.0
         with:
           bazelisk-version: 1.26.0
           disk-cache: gtest-fault-injection
@@ -80,7 +86,7 @@ jobs:
 
       - name: Archive report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: gtest-fault-injection-report
           path: gtest_fault_injection_report/

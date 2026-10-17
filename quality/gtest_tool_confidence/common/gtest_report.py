@@ -24,6 +24,11 @@ how S-CORE turns the XML report into requirement-verification evidence:
 * no ``<failure>``, ``<error>``, ``<skipped>``    -> ``passed``
 * ``<failure>`` or ``<error>``                   -> ``failed``
 * ``<skipped>``                                -> ``skipped``
+
+GoogleTest reports a failure outside a test case (``SetUpTestSuite()``,
+``TearDownTestSuite()``, a global ``Environment``) as an additional
+``<testcase>`` with empty ``name`` and ``classname``. --gtest_list_tests does
+not list it. It is keyed here as ``<testsuite name>.(suite-level)``.
 """
 
 import dataclasses
@@ -71,6 +76,10 @@ _INHERITED_TEST_ENV = (
 )
 
 
+# Key suffix for a failure outside a test case (see module docstring).
+SUITE_LEVEL = "(suite-level)"
+
+
 @dataclasses.dataclass(frozen=True)
 class TestcaseResult:
     key: str
@@ -87,8 +96,27 @@ def clean_test_env(extra=None):
     return env
 
 
-def testcase_key(testcase):
-    return f"{testcase.get('classname', '')}.{testcase.get('name', '')}"
+def testcase_key(testcase, suite_name=""):
+    classname = testcase.get("classname", "")
+    name = testcase.get("name", "")
+    if not classname and not name:
+        return f"{suite_name}.{SUITE_LEVEL}"
+    return f"{classname}.{name}"
+
+
+def is_suite_level(key):
+    return key.endswith(f".{SUITE_LEVEL}")
+
+
+def iter_testcases(root):
+    """Yield (key, <testcase> element) for every test case of a report."""
+    # root.iter() includes the root itself if it is a <testsuite>.
+    suites = list(root.iter("testsuite"))
+    if root.tag != "testsuite":
+        suites.insert(0, root)
+    for suite in suites:
+        for testcase in suite.findall("testcase"):
+            yield testcase_key(testcase, suite.get("name", "")), testcase
 
 
 def classify(testcase):
@@ -126,8 +154,7 @@ def parse_report(xml_path):
     """
     root = ET.parse(xml_path).getroot()
     results = {}
-    for testcase in root.iter("testcase"):
-        key = testcase_key(testcase)
+    for key, testcase in iter_testcases(root):
         if key in results:
             raise ValueError(f"{xml_path}: duplicate test case {key}")
         result, message = classify(testcase)

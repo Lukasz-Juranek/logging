@@ -23,10 +23,15 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace
@@ -92,6 +97,40 @@ class MockInterface : public Interface
 void AssertInHelper()
 {
     ASSERT_EQ(One(), Two());
+}
+
+bool IsEven(int value)
+{
+    return (value % 2) == 0;
+}
+
+bool IsGreater(int lhs, int rhs)
+{
+    return lhs > rhs;
+}
+
+struct Record
+{
+    int id;
+};
+
+// Returns `count` copies of `fill`, with the last element replaced by `last`.
+std::vector<int> LongVector(std::size_t count, int fill, int last)
+{
+    std::vector<int> values(count, fill);
+    values.back() = last;
+    return values;
+}
+
+// A float `ulps` units in the last place above 1.0F.
+float OnePlusUlps(int ulps)
+{
+    float value = 1.0F;
+    for (int i = 0; i < ulps; ++i)
+    {
+        value = std::nextafter(value, 2.0F);
+    }
+    return value;
 }
 
 }  // namespace
@@ -217,6 +256,132 @@ TEST(CanaryMustFail, AssertInHelperFunction)
     AssertInHelper();
 }
 
+TEST(CanaryMustFail, AssertTrueStopsTest)
+{
+    ASSERT_TRUE(One() == Two());
+    RecordProperty("ReachedAfterFatalAssertion", "yes");
+}
+
+TEST(CanaryMustFail, AssertThatStopsTest)
+{
+    ASSERT_THAT(One(), ::testing::Eq(Two()));
+    RecordProperty("ReachedAfterFatalAssertion", "yes");
+}
+
+TEST(CanaryMustFail, ExpectPred1)
+{
+    EXPECT_PRED1(IsEven, One());
+}
+
+TEST(CanaryMustFail, ExpectPred2)
+{
+    EXPECT_PRED2(IsGreater, One(), Two());
+}
+
+// A failure raised in another thread shall fail the test that started the thread.
+TEST(CanaryMustFail, ExpectInOtherThread)
+{
+    std::thread worker([]() {
+        EXPECT_EQ(One(), Two());
+    });
+    worker.join();
+}
+
+// ---------------------------------------------------------------- matchers
+
+TEST(CanaryMustFail, MatcherHasSubstr)
+{
+    EXPECT_THAT(std::string("canary"), ::testing::HasSubstr("canarz"));
+}
+
+TEST(CanaryMustFail, MatcherUnorderedElementsAre)
+{
+    EXPECT_THAT((std::vector<int>{One(), Two()}), ::testing::UnorderedElementsAre(2, 2));
+}
+
+TEST(CanaryMustFail, MatcherContains)
+{
+    EXPECT_THAT((std::vector<int>{One(), One()}), ::testing::Contains(Two()));
+}
+
+TEST(CanaryMustFail, MatcherAllOf)
+{
+    EXPECT_THAT(One(), ::testing::AllOf(::testing::Gt(0), ::testing::Lt(1)));
+}
+
+TEST(CanaryMustFail, MatcherNot)
+{
+    EXPECT_THAT(One(), ::testing::Not(::testing::Eq(1)));
+}
+
+TEST(CanaryMustFail, MatcherIsEmpty)
+{
+    EXPECT_THAT((std::vector<int>{One()}), ::testing::IsEmpty());
+}
+
+TEST(CanaryMustFail, MatcherPointee)
+{
+    const auto value = std::make_unique<int>(One());
+    EXPECT_THAT(value.get(), ::testing::Pointee(Two()));
+}
+
+TEST(CanaryMustFail, MatcherField)
+{
+    EXPECT_THAT((Record{One()}), ::testing::Field(&Record::id, Two()));
+}
+
+// ------------------------------------------- non-trivial and boundary inputs
+//
+// The canaries above use small integers. These ones check that the verdict
+// does not depend on the magnitude, length or representation of the values.
+
+TEST(CanaryMustFail, ExpectEqInt64Extremes)
+{
+    EXPECT_EQ(std::numeric_limits<std::int64_t>::min() + One() - 1, std::numeric_limits<std::int64_t>::max());
+}
+
+TEST(CanaryMustFail, ExpectEqUint64DiffersInTopBit)
+{
+    const std::uint64_t value = static_cast<std::uint64_t>(One()) << 63U;
+    EXPECT_EQ(value, std::uint64_t{0U});
+}
+
+TEST(CanaryMustFail, ExpectEqLongStringDiffersAtEnd)
+{
+    const std::string lhs = std::string(4096U, 'x') + "a";
+    const std::string rhs = std::string(4096U, 'x') + "b";
+    EXPECT_EQ(lhs, rhs);
+}
+
+TEST(CanaryMustFail, ExpectEqStringWithEmbeddedNul)
+{
+    const std::string lhs("canary\0a", 8U);
+    const std::string rhs("canary\0b", 8U);
+    EXPECT_EQ(lhs, rhs);
+}
+
+TEST(CanaryMustFail, ExpectEqLongVectorDiffersAtEnd)
+{
+    EXPECT_EQ(LongVector(10000U, One(), One()), LongVector(10000U, One(), Two()));
+}
+
+// EXPECT_FLOAT_EQ accepts 4 ULPs; 5 ULPs shall fail.
+TEST(CanaryMustFail, ExpectFloatEqFiveUlps)
+{
+    EXPECT_FLOAT_EQ(1.0F, OnePlusUlps(5));
+}
+
+TEST(CanaryMustFail, ExpectFloatEqNan)
+{
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    EXPECT_FLOAT_EQ(nan, nan);
+}
+
+TEST(CanaryMustFail, ExpectNearJustOutside)
+{
+    EXPECT_NEAR(1.0, 1.125 + 1e-9, 0.125);
+}
+
 // ----------------------------------------------------------- test structure
 
 class CanaryFixture : public ::testing::Test
@@ -229,6 +394,17 @@ class CanaryFixture : public ::testing::Test
 };
 
 TEST_F(CanaryFixture, FailureInSetUp) {}
+
+class CanaryTearDownFixture : public ::testing::Test
+{
+  protected:
+    void TearDown() override
+    {
+        ADD_FAILURE() << "canary failure in TearDown";
+    }
+};
+
+TEST_F(CanaryTearDownFixture, FailureInTearDown) {}
 
 class CanaryParam : public ::testing::TestWithParam<int>
 {
@@ -271,6 +447,12 @@ TEST(CanaryMustFailDeathTest, ExpectDeathWrongMessage)
 TEST(CanaryMustFailDeathTest, ExpectExitWrongCode)
 {
     EXPECT_EXIT(std::exit(1), ::testing::ExitedWithCode(0), "");
+}
+
+TEST(CanaryMustFailDeathTest, AssertDeathStopsTest)
+{
+    ASSERT_DEATH(DoNothing(), "");
+    RecordProperty("ReachedAfterFatalAssertion", "yes");
 }
 
 // ---------------------------------------------------------------------- gmock

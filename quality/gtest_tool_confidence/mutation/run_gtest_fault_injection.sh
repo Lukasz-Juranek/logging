@@ -22,6 +22,13 @@
 # GoogleTest defects. It is a central activity: run it once per GoogleTest
 # version or toolchain change, not per module.
 #
+# Scope limitations (recorded in the GoogleTest Tool Verification Report):
+# * only the compiled library sources (googletest/src, googlemock/src) are
+#   mutated. Header-only code (assertion helpers such as CmpHelperEQ, matchers,
+#   gmock-spec-builders.h, the parameterized/typed test machinery) is
+#   instantiated in the canary sources and is NOT mutated;
+# * the build uses Clang at -O0, not the production GCC/QCC toolchains.
+#
 # Usage:
 #   quality/gtest_tool_confidence/mutation/run_gtest_fault_injection.sh \
 #       [--threshold 0] [--out gtest_fault_injection_report] [--dry-run]
@@ -45,7 +52,7 @@ while [[ $# -gt 0 ]]; do
         --threshold) THRESHOLD="$2"; shift 2 ;;
         --out) OUT="$2"; shift 2 ;;
         --dry-run) DRY_RUN="--dry-run"; shift ;;
-        -h|--help) sed -n '15,37p' "$0"; exit 0 ;;
+        -h|--help) sed -n '15,45p' "$0"; exit 0 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -78,22 +85,29 @@ FLAGS=(
     --strip=never
     --dynamic_mode=off
 )
-TARGETS=("${CANARY}:gtest_canary_must_fail" "${CANARY}:gtest_canary_must_pass" "${CANARY}:gtest_canary_premature_exit")
+# Keep in sync with _CANARIES in canary/BUILD (the checker fails if a binary
+# named in canary_expectations.json is not given).
+CANARIES=(environment_failure must_fail must_pass premature_exit single_failure suite_failure)
+TARGETS=()
+for name in "${CANARIES[@]}"; do
+    TARGETS+=("${CANARY}:gtest_canary_${name}")
+done
 "${BAZEL}" "${STARTUP[@]}" build "${FLAGS[@]}" "${TARGETS[@]}"
 
 EXEC_ROOT="$("${BAZEL}" "${STARTUP[@]}" info "${FLAGS[@]}" execution_root 2>/dev/null)"
 binary_of() {
     "${BAZEL}" "${STARTUP[@]}" cquery "${FLAGS[@]}" --output=files "$1" 2>/dev/null | head -n 1
 }
-MUST_FAIL="${EXEC_ROOT}/$(binary_of "${TARGETS[0]}")"
-MUST_PASS="${EXEC_ROOT}/$(binary_of "${TARGETS[1]}")"
-PREMATURE="${EXEC_ROOT}/$(binary_of "${TARGETS[2]}")"
-for b in "${MUST_FAIL}" "${MUST_PASS}" "${PREMATURE}"; do
+CHECKER_ARGS=()
+for name in "${CANARIES[@]}"; do
+    b="${EXEC_ROOT}/$(binary_of "${CANARY}:gtest_canary_${name}")"
     [[ -x "${b}" ]] || { echo "canary binary not found: ${b}" >&2; exit 1; }
+    CHECKER_ARGS+=("${name}=${b}")
 done
+MUST_FAIL="${EXEC_ROOT}/$(binary_of "${CANARY}:gtest_canary_must_fail")"
 
 # Mull is used only to discover the mutants compiled into the must-fail binary
-# (dry run). The three binaries contain the same GoogleTest mutants, and a
+# (dry run). All canary binaries contain the same GoogleTest mutants, and a
 # mutant is activated through an environment variable named after its id, so
 # it is active in all of them while the checker runs.
 export MULL_CONFIG="${CONFIG}"
@@ -121,7 +135,7 @@ python3 "${HERE}/fault_injection_driver.py" \
     --timeout "$((MULL_TIMEOUT_MS / 1000))" \
     -- python3 "${WORKSPACE}/quality/gtest_tool_confidence/canary/check_gtest_canaries.py" \
     "${WORKSPACE}/quality/gtest_tool_confidence/canary/canary_expectations.json" \
-    "${MUST_FAIL}" "${MUST_PASS}" "${PREMATURE}" | tee "${OUT}/gtest_fault_injection.log"
+    "${CHECKER_ARGS[@]}" | tee "${OUT}/gtest_fault_injection.log"
 
 python3 "${HERE}/mutation_score.py" \
     --elements "${OUT}/gtest_fault_injection.json" \

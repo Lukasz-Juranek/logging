@@ -78,10 +78,24 @@ jobs:
       - name: GoogleTest run completeness check
         run: |
           # Tool-confidence measure M2 of the GoogleTest Tool Verification Report:
-          # every listed test case must be present in its report, counts must match,
-          # and no test case may end with <error>.
+          # every test target of the step above must have a report, every listed
+          # test case must be reported (and vice versa), counts must match, and no
+          # test case may fail, end with <error> or be skipped with requirement links.
+          # The expected targets mirror the scope and tag filter of "Test with Bazel";
+          # QNX-only targets are incompatible with this configuration.
+          bazel query --lockfile_mode=error \
+            'let t = tests(//score/... + //quality/gtest_tool_confidence/... - //score/test/component/...) in
+             $t except attr(tags, "\bno_ci\b|\bmanual\b", $t)
+                except attr(target_compatible_with, "os:qnx", $t)' \
+            > "${RUNNER_TEMP}/expected_tests.txt"
+          # "bazel info --config x86_64-linux" cannot resolve the platform label
+          # (bzlmod); the convenience symlinks point to the outputs of the test run.
+          TESTLOGS="$(readlink -f bazel-testlogs)"
+          BAZEL_BIN="$(readlink -f bazel-bin)"
           bazel run --lockfile_mode=error --config x86_64-linux \
             //quality/gtest_tool_confidence/completeness:check_test_run_completeness -- \
-            --testlogs "$(bazel info --config x86_64-linux bazel-testlogs)" \
-            --bazel-bin "$(bazel info --config x86_64-linux bazel-bin)"
+            --testlogs "${TESTLOGS}" \
+            --bazel-bin "${BAZEL_BIN}" \
+            --expected-targets "${RUNNER_TEMP}/expected_tests.txt" \
+            --fail-on-skipped-verification
 

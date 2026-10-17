@@ -1,5 +1,5 @@
 {
-  "_comment": "Expected GoogleTest result per canary test case. Keys are '<classname>.<name>' as written to the XML report. 'tool_req' names the requirement of doc_tool__gtest (eclipse-score/score) that the canary validates. Every test case in the report must be listed here and vice versa.",
+  "_comment": "Expected GoogleTest result per canary test case. The binary key is the cc_binary name without the 'gtest_canary_' prefix. Test case keys are '<classname>.<name>' as written to the XML report. 'tool_req' names the requirement of doc_tool__gtest (eclipse-score/score) that the canary validates. Every listed test case must have an expectation and vice versa. 'unlisted_entries' are report entries that --gtest_list_tests does not list (failures outside a test case, keyed '<testsuite>.(suite-level)'). 'premature_exit_file' is 'absent' unless stated. 'report: incomplete' means the report must be missing or lack listed test cases. A test case may only report the properties named in required_properties.",
   "binaries": {
     "must_fail": {
       "exit_code": "nonzero",
@@ -27,8 +27,30 @@
         "CanaryMustFail.Fail": {"result": "failed", "tool_req": "tool_req__gtest_fatal_failure_reported"},
         "CanaryMustFail.UncaughtException": {"result": "failed", "tool_req": "tool_req__gtest_exception_failure_reported"},
         "CanaryMustFail.AssertEqStopsTest": {"result": "failed", "tool_req": "tool_req__gtest_fatal_failure_reported", "forbidden_properties": ["ReachedAfterFatalAssertion"]},
+        "CanaryMustFail.AssertTrueStopsTest": {"result": "failed", "tool_req": "tool_req__gtest_fatal_failure_reported", "forbidden_properties": ["ReachedAfterFatalAssertion"]},
+        "CanaryMustFail.AssertThatStopsTest": {"result": "failed", "tool_req": "tool_req__gtest_fatal_failure_reported", "forbidden_properties": ["ReachedAfterFatalAssertion"]},
         "CanaryMustFail.AssertInHelperFunction": {"result": "failed", "tool_req": "tool_req__gtest_fatal_failure_reported"},
+        "CanaryMustFail.ExpectPred1": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectPred2": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectInOtherThread": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherHasSubstr": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherUnorderedElementsAre": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherContains": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherAllOf": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherNot": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherIsEmpty": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherPointee": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.MatcherField": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectEqInt64Extremes": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectEqUint64DiffersInTopBit": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectEqLongStringDiffersAtEnd": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectEqStringWithEmbeddedNul": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectEqLongVectorDiffersAtEnd": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectFloatEqFiveUlps": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectFloatEqNan": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
+        "CanaryMustFail.ExpectNearJustOutside": {"result": "failed", "tool_req": "tool_req__gtest_nonfatal_failure_reported"},
         "CanaryFixture.FailureInSetUp": {"result": "failed", "tool_req": "tool_req__gtest_fixture_failure_reported"},
+        "CanaryTearDownFixture.FailureInTearDown": {"result": "failed", "tool_req": "tool_req__gtest_fixture_failure_reported"},
         "Values/CanaryParam.OnlyTwoFails/0": {"result": "passed", "tool_req": "tool_req__gtest_generated_tests_reported"},
         "Values/CanaryParam.OnlyTwoFails/1": {"result": "failed", "tool_req": "tool_req__gtest_generated_tests_reported"},
         "Values/CanaryParam.OnlyTwoFails/2": {"result": "passed", "tool_req": "tool_req__gtest_generated_tests_reported"},
@@ -37,6 +59,7 @@
         "CanaryMustFailDeathTest.ExpectDeathButSurvives": {"result": "failed", "tool_req": "tool_req__gtest_death_test_reported"},
         "CanaryMustFailDeathTest.ExpectDeathWrongMessage": {"result": "failed", "tool_req": "tool_req__gtest_death_test_reported"},
         "CanaryMustFailDeathTest.ExpectExitWrongCode": {"result": "failed", "tool_req": "tool_req__gtest_death_test_reported"},
+        "CanaryMustFailDeathTest.AssertDeathStopsTest": {"result": "failed", "tool_req": "tool_req__gtest_death_test_reported", "forbidden_properties": ["ReachedAfterFatalAssertion"]},
         "CanaryMustFailMock.UnmetExpectation": {"result": "failed", "tool_req": "tool_req__gtest_mock_expectation_verified"},
         "CanaryMustFailMock.CalledTooOften": {"result": "failed", "tool_req": "tool_req__gtest_mock_expectation_verified"},
         "CanaryMustFailMock.WrongArgument": {"result": "failed", "tool_req": "tool_req__gtest_mock_expectation_verified"},
@@ -49,12 +72,15 @@
       "tool_req": "tool_req__gtest_exit_code",
       "testcases": {
         "CanaryMustPass.Assertions": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
+        "CanaryMustPass.Matchers": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
+        "CanaryMustPass.BoundaryInputs": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
         "CanaryMustPass.RecordPropertyReachesReport": {
           "result": "passed",
           "tool_req": "tool_req__gtest_record_property_reported",
           "required_properties": {
             "PartiallyVerifies": "tool_req__gtest_canary_partially",
             "FullyVerifies": "tool_req__gtest_canary_fully",
+            "Verifies": "::canary::Function()",
             "Description": "GoogleTest canary for RecordProperty",
             "TestType": "requirements-based",
             "DerivationTechnique": "requirements-analysis",
@@ -64,18 +90,59 @@
         "CanaryMustPassDeathTest.ExpectDeath": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
         "CanaryMustPassDeathTest.ExpectExit": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
         "CanaryMustPassMock.ExpectationsMet": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
+        "CanaryMustPassMock.ActionsPerformed": {"result": "passed", "tool_req": "tool_req__gtest_mock_actions_performed"},
+        "CanaryMustPassMock.OnCallDefaultAction": {"result": "passed", "tool_req": "tool_req__gtest_mock_actions_performed"},
         "CanaryMustPassMock.NiceMockUninterestingCall": {"result": "passed", "tool_req": "tool_req__gtest_no_false_failure"},
         "CanaryMustPassMock.NaggyMockUninterestingCallOnlyWarns": {"result": "passed", "tool_req": "tool_req__gtest_mock_expectation_verified"},
-        "CanaryMustPass.SkippedIsNotPassed": {"result": "skipped", "tool_req": "tool_req__gtest_skip_disabled_reported"},
+        "CanaryMustPass.SkippedIsNotPassed": {"result": "skipped", "tool_req": "tool_req__gtest_skip_disabled_reported", "required_properties": {"PartiallyVerifies": "tool_req__gtest_canary_skipped"}},
+        "CanarySkipInSetUp.SkippedIsNotPassed": {"result": "skipped", "tool_req": "tool_req__gtest_skip_disabled_reported"},
         "CanaryMustPass.DISABLED_DisabledIsNotPassed": {"result": "disabled", "tool_req": "tool_req__gtest_skip_disabled_reported"}
       }
     },
+    "single_failure": {
+      "_comment": "Exactly one failing test, not the first: the exit code must still be non-zero.",
+      "exit_code": "nonzero",
+      "tool_req": "tool_req__gtest_exit_code",
+      "testcases": {
+        "CanarySingleFailure.Passes": {"result": "passed", "tool_req": "tool_req__gtest_exit_code"},
+        "CanarySingleFailure.OnlyThisFails": {"result": "failed", "tool_req": "tool_req__gtest_exit_code"},
+        "CanarySingleFailure.PassesAfterFailure": {"result": "passed", "tool_req": "tool_req__gtest_exit_code"}
+      }
+    },
+    "suite_failure": {
+      "_comment": "A failure in SetUpTestSuite() skips the suite's tests; a failure in TearDownTestSuite() leaves them passed. Both must make the exit code non-zero and add a failed suite-level entry.",
+      "exit_code": "nonzero",
+      "tool_req": "tool_req__gtest_fixture_failure_reported",
+      "testcases": {
+        "CanarySetUpTestSuiteFailure.BodyPasses": {"result": "skipped", "tool_req": "tool_req__gtest_fixture_failure_reported"},
+        "CanaryTearDownTestSuiteFailure.BodyPasses": {"result": "passed", "tool_req": "tool_req__gtest_fixture_failure_reported"}
+      },
+      "unlisted_entries": {
+        "CanarySetUpTestSuiteFailure.(suite-level)": {"result": "failed", "tool_req": "tool_req__gtest_fixture_failure_reported"},
+        "CanaryTearDownTestSuiteFailure.(suite-level)": {"result": "failed", "tool_req": "tool_req__gtest_fixture_failure_reported"}
+      }
+    },
+    "environment_failure": {
+      "_comment": "A fatal failure in a global Environment::SetUp() prevents all tests from running: they must not be reported as passed, the exit code must be non-zero and the failure must be reported.",
+      "exit_code": "nonzero",
+      "tool_req": "tool_req__gtest_fixture_failure_reported",
+      "testcases": {
+        "CanaryEnvironmentFailure.NotExecuted": {"result": "skipped", "tool_req": "tool_req__gtest_fixture_failure_reported"}
+      },
+      "unlisted_entries": {
+        "NonTestSuiteFailure.(suite-level)": {"result": "failed", "tool_req": "tool_req__gtest_fixture_failure_reported"}
+      }
+    },
     "premature_exit": {
-      "_comment": "exit(0) inside a test: exit code 0 is expected; detection relies on TEST_PREMATURE_EXIT_FILE being left behind, which makes Bazel fail the target.",
+      "_comment": "exit(0) inside a test: exit code 0 is expected. Detection relies on TEST_PREMATURE_EXIT_FILE being left behind (Bazel then fails the target) and on the report being incomplete (M2).",
       "exit_code": "zero",
       "premature_exit_file": "present",
+      "report": "incomplete",
       "tool_req": "tool_req__gtest_report_complete",
-      "testcases": {}
+      "testcases": {
+        "CanaryPrematureExit.ExitZeroInsideTest": {"result": "not reported", "tool_req": "tool_req__gtest_report_complete"},
+        "CanaryPrematureExit.NeverReached": {"result": "not reported", "tool_req": "tool_req__gtest_report_complete"}
+      }
     }
   }
 }

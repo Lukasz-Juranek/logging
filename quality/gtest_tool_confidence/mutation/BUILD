@@ -28,6 +28,21 @@ py_binary(
     srcs = ["mutation_score.py"],
 )
 
+py_binary(
+    name = "fault_injection_driver",
+    srcs = ["fault_injection_driver.py"],
+)
+
+py_test(
+    name = "fault_injection_driver_test",
+    size = "small",
+    srcs = [
+        "fault_injection_driver.py",
+        "fault_injection_driver_test.py",
+    ],
+    main = "fault_injection_driver_test.py",
+)
+
 py_test(
     name = "mutation_score_test",
     size = "small",
