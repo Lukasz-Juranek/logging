@@ -1,0 +1,32 @@
+# *******************************************************************************
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+# Mull configuration for the GoogleTest fault-injection campaign: faults are
+# injected into the GoogleTest/gMock sources (not into S-CORE code) and the
+# canary checker has to detect them. Changing the operator set or the scope
+# changes the evidence: record it in the GoogleTest Tool Verification Report.
+mutators:
+  - cxx_arithmetic
+  - cxx_comparison
+  - cxx_boundary
+  - cxx_logical
+  - cxx_remove_void_call
+  - cxx_replace_scalar_call
+includePaths:
+  - ".*googletest[^/]*/googletest/src/.*\\.cc$"
+  - ".*googletest[^/]*/googlemock/src/.*\\.cc$"
+excludePaths:
+  # Not part of the linked library (amalgamation and main() wrappers).
+  - ".*/gtest-all\\.cc$"
+  - ".*/gmock-all\\.cc$"
+  - ".*/gtest_main\\.cc$"
+  - ".*/gmock_main\\.cc$"

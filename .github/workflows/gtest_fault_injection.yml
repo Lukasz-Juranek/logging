@@ -1,0 +1,86 @@
+# *******************************************************************************
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+# GoogleTest fault-injection campaign: tool-confidence measure M3 of the
+# GoogleTest Tool Verification Report. Injects faults into the GoogleTest/gMock
+# sources and checks that the canary suite detects them.
+#
+# This is a central activity, needed once per GoogleTest version or toolchain
+# change, not per module. It lives here as a reference implementation; its
+# intended home is a central repository (e.g. score_tooling).
+name: GoogleTest Fault Injection
+
+on:
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: "Minimum detection rate in percent (gate)"
+        required: false
+        default: "0"
+  push:
+    branches: [main]
+    paths:
+      - "MODULE.bazel"
+      - "quality/gtest_tool_confidence/**"
+
+permissions:
+  contents: read
+
+env:
+  MULL_VERSION: "0.34.2"
+  LLVM_MAJOR: "19"
+
+jobs:
+  fault-injection:
+    name: Inject faults into GoogleTest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Clang and Mull
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "clang-${LLVM_MAJOR}"
+          LLVM_FULL="$(dpkg-query -W -f='${Version}' "clang-${LLVM_MAJOR}" | sed -E 's/^1:([0-9.]+).*/\1/')"
+          DEB="Mull-${LLVM_MAJOR}-${MULL_VERSION}-LLVM-${LLVM_FULL}-ubuntu-amd64-24.04.deb"
+          curl -fsSL -o mull.deb "https://github.com/mull-project/mull/releases/download/${MULL_VERSION}/${DEB}"
+          sudo apt-get install -y ./mull.deb
+          "mull-runner-${LLVM_MAJOR}" --version
+
+      - name: Setup Bazel
+        uses: bazel-contrib/setup-bazel@0.15.0
+        with:
+          bazelisk-version: 1.26.0
+          disk-cache: gtest-fault-injection
+          repository-cache: true
+          bazelisk-cache: true
+
+      - name: Run fault injection
+        env:
+          MULL_CC: clang-${{ env.LLVM_MAJOR }}
+          MULL_PLUGIN: /usr/lib/mull-ir-frontend-${{ env.LLVM_MAJOR }}
+          MULL_RUNNER: mull-runner-${{ env.LLVM_MAJOR }}
+        run: |
+          quality/gtest_tool_confidence/mutation/run_gtest_fault_injection.sh \
+            --threshold "${{ github.event.inputs.threshold || '0' }}" \
+            --out gtest_fault_injection_report
+          cat gtest_fault_injection_report/*.md >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Archive report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtest-fault-injection-report
+          path: gtest_fault_injection_report/

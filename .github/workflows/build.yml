@@ -73,4 +73,15 @@ jobs:
           # Component tests run in component_tests.yml; exclude here to avoid pulling in QNX deps.
           bazel test --lockfile_mode=error --config x86_64-linux \
             --test_tag_filters=-no_ci \
-            -- //score/... -//score/test/component/...
+            -- //score/... -//score/test/component/... //quality/gtest_tool_confidence/...
+
+      - name: GoogleTest run completeness check
+        run: |
+          # Tool-confidence measure M2 of the GoogleTest Tool Verification Report:
+          # every listed test case must be present in its report, counts must match,
+          # and no test case may end with <error>.
+          bazel run --lockfile_mode=error --config x86_64-linux \
+            //quality/gtest_tool_confidence/completeness:check_test_run_completeness -- \
+            --testlogs "$(bazel info --config x86_64-linux bazel-testlogs)" \
+            --bazel-bin "$(bazel info --config x86_64-linux bazel-bin)"
+
